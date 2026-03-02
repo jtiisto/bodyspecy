@@ -81,6 +81,10 @@ All values are stored in metric units (kg, cm, g/cm²).
 - **scan_regions** — body composition by region (arms, legs, trunk, android, gynoid, total, right/left arm, right/left leg)
 - **scan_bone_density** — BMD by bone region (head, arms, legs, trunk, ribs, spine, pelvis, total) with T/Z-scores
 
+## Why PDF parsing instead of the API?
+
+BodySpec does have a public API, but it does not include all the data available on their web portal and in the PDF reports — notably the body composition images. The PDF reports contain a composite image, while the web portal has both the composite and individual layer images (fat mass, lean mass, bone density). The API is still useful for cross-checking that the PDF parser extracts values correctly.
+
 ## Development
 
 ```bash
