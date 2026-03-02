@@ -25,8 +25,15 @@ all = [
 ]
 dev = [
     "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",
     "ruff>=0.1.0",
+]
+api-test = ["httpx>=0.27.0"]
+image-test = [
+    "Pillow>=10.0.0",
+    "scikit-image>=0.22.0",
+    "numpy>=1.26.0",
 ]
 
 [project.scripts]
@@ -43,6 +50,11 @@ where = ["src"]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
+markers = [
+    "api: BodySpec API verification tests (require network + token)",
+    "personal: tests requiring personal data in tests/personal_data/ (git-ignored)",
+]
+addopts = "-m 'not api and not personal'"
 
 [tool.ruff]
 target-version = "py310"

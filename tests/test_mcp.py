@@ -1,6 +1,5 @@
 """Tests for MCP server tools."""
 
-import asyncio
 import json
 
 import pytest
@@ -32,13 +31,12 @@ def mcp_server(mcp_config):
     return create_mcp_server(mcp_config)
 
 
-def _call_tool(mcp_server, tool_name: str, **kwargs):
+async def _call_tool(mcp_server, tool_name: str, **kwargs):
     """Call a tool function registered on the MCP server via FastMCP's async API."""
-    result = asyncio.run(mcp_server.call_tool(tool_name, kwargs))
-    # FastMCP v3 returns ToolResult with structured_content or text content
+    tool = await mcp_server.get_tool(tool_name)
+    result = await tool.run(kwargs)
     if result.structured_content:
         return result.structured_content.get("result", result.structured_content)
-    # Fall back to text content
     if result.content:
         text = result.content[0].text
         try:
@@ -51,12 +49,14 @@ def _call_tool(mcp_server, tool_name: str, **kwargs):
 class TestExploreDatabase:
     """Test explore_database_structure tool."""
 
-    def test_returns_table_info(self, mcp_server):
-        result = _call_tool(mcp_server, "explore_database_structure")
+    @pytest.mark.asyncio
+    async def test_returns_table_info(self, mcp_server):
+        result = await _call_tool(mcp_server, "explore_database_structure")
         assert "available_tables" in result
 
-    def test_lists_all_tables(self, mcp_server):
-        result = _call_tool(mcp_server, "explore_database_structure")
+    @pytest.mark.asyncio
+    async def test_lists_all_tables(self, mcp_server):
+        result = await _call_tool(mcp_server, "explore_database_structure")
         tables = result["available_tables"]
         assert "scans" in tables
         assert "scan_regions" in tables
@@ -66,8 +66,9 @@ class TestExploreDatabase:
 class TestGetScanSummary:
     """Test get_scan_summary tool."""
 
-    def test_returns_expected_structure(self, mcp_server):
-        result = _call_tool(mcp_server, "get_scan_summary")
+    @pytest.mark.asyncio
+    async def test_returns_expected_structure(self, mcp_server):
+        result = await _call_tool(mcp_server, "get_scan_summary")
         assert result["total_scans"] == 2
         assert "date_range" in result
         assert "latest_scan" in result
@@ -77,8 +78,9 @@ class TestGetScanSummary:
 class TestExecuteSqlQuery:
     """Test execute_sql_query tool."""
 
-    def test_valid_select(self, mcp_server):
-        result = _call_tool(
+    @pytest.mark.asyncio
+    async def test_valid_select(self, mcp_server):
+        result = await _call_tool(
             mcp_server,
             "execute_sql_query",
             query="SELECT scan_date, total_body_fat_pct FROM scans ORDER BY scan_date",
@@ -86,32 +88,36 @@ class TestExecuteSqlQuery:
         assert isinstance(result, list)
         assert len(result) == 2
 
-    def test_rejects_insert(self, mcp_server):
+    @pytest.mark.asyncio
+    async def test_rejects_insert(self, mcp_server):
         with pytest.raises(Exception):
-            _call_tool(
+            await _call_tool(
                 mcp_server,
                 "execute_sql_query",
                 query="INSERT INTO scans (scan_date) VALUES ('2025-01-01')",
             )
 
-    def test_rejects_delete(self, mcp_server):
+    @pytest.mark.asyncio
+    async def test_rejects_delete(self, mcp_server):
         with pytest.raises(Exception):
-            _call_tool(
+            await _call_tool(
                 mcp_server,
                 "execute_sql_query",
                 query="DELETE FROM scans",
             )
 
-    def test_rejects_drop(self, mcp_server):
+    @pytest.mark.asyncio
+    async def test_rejects_drop(self, mcp_server):
         with pytest.raises(Exception):
-            _call_tool(
+            await _call_tool(
                 mcp_server,
                 "execute_sql_query",
                 query="DROP TABLE scans",
             )
 
-    def test_select_with_where(self, mcp_server):
-        result = _call_tool(
+    @pytest.mark.asyncio
+    async def test_select_with_where(self, mcp_server):
+        result = await _call_tool(
             mcp_server,
             "execute_sql_query",
             query="SELECT * FROM scan_bone_density WHERE region = 'total'",

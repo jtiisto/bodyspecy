@@ -12,3 +12,4 @@ htmlcov/
 *.egg
 .claude/
 .gemini/
+tests/personal_data/
