@@ -295,6 +295,11 @@ def create_mcp_server(config: MCPConfig) -> FastMCP:
         IMPORTANT: Only SELECT and WITH queries are allowed for security. All data is
         stored in metric units (kg, cm, g/cm2).
 
+        Column names and `region` values are non-obvious — call
+        get_table_details(table_name) to confirm columns and enumerate region
+        values before filtering; do NOT guess. A wrong region returns 0 rows,
+        not an error.
+
         Args:
             query: SQL SELECT query to execute
             params: Optional list of parameters for ? placeholders in query
