@@ -11,7 +11,7 @@ from .models import ParsedBoneDensity, ParsedRegion, ParsedScan
 # Regex patterns
 HEADER_RE = re.compile(
     r'(.+?)\s+(Male|Female)\s+(\d{1,2}/\d{1,2}/\d{4})\s+'
-    r'([\d.]+)\s*in\.\s+([\d.]+)\s*lbs\.\s+(\d{1,2}/\d{1,2}/\d{4})'
+    r'(?:[\d.]+)\s*in\.\s+(?:[\d.]+)\s*lbs\.\s+(\d{1,2}/\d{1,2}/\d{4})'
 )
 
 SUMMARY_ROW_RE = re.compile(
@@ -83,8 +83,6 @@ def parse_pdf(pdf_path: str | Path) -> ParsedScan:
         client_name=header["client_name"],
         sex=header["sex"],
         birth_date=header["birth_date"],
-        height_in=header["height_in"],
-        weight_lbs=header["weight_lbs"],
         total_body_fat_pct=summary["fat_pct"],
         total_mass_lbs=summary["total_mass"],
         fat_tissue_lbs=summary["fat_tissue"],
@@ -112,9 +110,7 @@ def _parse_header(text: str) -> dict:
         "client_name": m.group(1).strip(),
         "sex": m.group(2),
         "birth_date": parse_date_mdy(m.group(3)),
-        "height_in": float(m.group(4)),
-        "weight_lbs": float(m.group(5)),
-        "scan_date": parse_date_mdy(m.group(6)),
+        "scan_date": parse_date_mdy(m.group(4)),
     }
 
 

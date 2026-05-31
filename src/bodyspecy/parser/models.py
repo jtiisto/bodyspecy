@@ -33,8 +33,6 @@ class ParsedScan:
     client_name: str
     sex: str
     birth_date: date
-    height_in: float
-    weight_lbs: float
 
     # Summary Results (current scan row only)
     total_body_fat_pct: float

@@ -32,8 +32,6 @@ class TestParseLatestReport:
         assert scan.client_name
         assert scan.sex in ("Male", "Female")
         assert scan.birth_date is not None
-        assert scan.height_in > 0
-        assert scan.weight_lbs > 0
         assert scan.scan_date is not None
 
     def test_summary(self, scan):

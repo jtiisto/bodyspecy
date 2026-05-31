@@ -140,13 +140,6 @@ def _get_api_visceral_fat(api_client, result_id):
     return resp.json()
 
 
-def _get_api_scan_info(api_client, result_id):
-    """Fetch scan info for a single result."""
-    resp = api_client.get(f"/api/v1/users/me/results/{result_id}/dexa/scan-info")
-    resp.raise_for_status()
-    return resp.json()
-
-
 def _get_local_scan(local_db, scan_date):
     """Fetch a scan row from the local DB by date."""
     cursor = local_db.execute(
@@ -381,29 +374,3 @@ class TestVisceralFat:
                 )
         if not any_available:
             pytest.skip("Visceral fat endpoint not available in API")
-
-
-@pytest.mark.api
-class TestScanInfo:
-    def test_scan_info(self, api_client, local_db, matched_scans):
-        """Compare patient intake data for each matched scan."""
-        for result_id, scan_date in matched_scans:
-            api_data = _get_api_scan_info(api_client, result_id)
-            local = _get_local_scan(local_db, scan_date)
-
-            # Patient intake may be nested
-            intake = api_data.get("patient_intake", api_data)
-
-            api_height = intake.get("height_cm") or intake.get("height")
-            if api_height is not None and local["height_cm"] is not None:
-                _assert_approx(
-                    api_height, local["height_cm"],
-                    "height_cm", scan_date, 0.5,
-                )
-
-            api_weight = intake.get("weight_kg") or intake.get("weight")
-            if api_weight is not None and local["weight_kg"] is not None:
-                _assert_approx(
-                    api_weight, local["weight_kg"],
-                    "weight_kg", scan_date, 0.5,
-                )

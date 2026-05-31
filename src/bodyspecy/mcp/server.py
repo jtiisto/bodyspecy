@@ -381,7 +381,7 @@ def create_mcp_server(config: MCPConfig) -> FastMCP:
                     "body_fat_pct_change": round(
                         latest["total_body_fat_pct"] - first["total_body_fat_pct"], 1
                     ),
-                    "weight_kg_change": round(
+                    "total_mass_kg_change": round(
                         latest["total_mass_kg"] - first["total_mass_kg"], 2
                     ),
                     "fat_mass_kg_change": round(
@@ -410,7 +410,7 @@ def create_mcp_server(config: MCPConfig) -> FastMCP:
 
         Returns:
             Time-series data with scan_date, body_fat_pct, fat_mass_kg, lean_mass_kg,
-            weight_kg, rmr_kcal, ag_ratio, vat_mass_kg for each scan
+            total_mass_kg, rmr_kcal, ag_ratio, vat_mass_kg for each scan
         """
         try:
             query = """
@@ -419,7 +419,7 @@ def create_mcp_server(config: MCPConfig) -> FastMCP:
                     total_body_fat_pct as body_fat_pct,
                     fat_mass_kg,
                     lean_mass_kg,
-                    total_mass_kg as weight_kg,
+                    total_mass_kg,
                     rmr_kcal,
                     ag_ratio,
                     vat_mass_kg
@@ -435,7 +435,7 @@ def create_mcp_server(config: MCPConfig) -> FastMCP:
                     "body_fat_pct": "percentage",
                     "fat_mass_kg": "kilograms",
                     "lean_mass_kg": "kilograms",
-                    "weight_kg": "kilograms",
+                    "total_mass_kg": "kilograms",
                     "rmr_kcal": "kcal/day",
                     "ag_ratio": "ratio (android/gynoid)",
                     "vat_mass_kg": "kilograms",
@@ -647,10 +647,8 @@ def _get_data_guide() -> str:
 - `client_name` (TEXT): Client name
 - `sex` (TEXT): "Male" or "Female"
 - `birth_date` (DATE): Date of birth
-- `height_cm` (REAL): Height in centimeters
-- `weight_kg` (REAL): Intake weight in kilograms
 - `total_body_fat_pct` (REAL): Total body fat percentage, e.g. 30.9
-- `total_mass_kg` (REAL): Total body mass in kg (from DEXA, may differ from intake weight)
+- `total_mass_kg` (REAL): Total body mass in kg (DEXA-measured)
 - `fat_mass_kg` (REAL): Total fat tissue in kg
 - `lean_mass_kg` (REAL): Total lean tissue in kg
 - `bone_mineral_content_kg` (REAL): Total BMC in kg

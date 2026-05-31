@@ -11,7 +11,6 @@ from .models import Base, Scan, ScanBoneDensity, ScanRegion
 
 
 LBS_TO_KG = 0.45359237
-IN_TO_CM = 2.54
 IN3_TO_CM3 = 16.387064
 
 
@@ -54,8 +53,6 @@ class BodyspecDB:
                 client_name=parsed_scan.client_name,
                 sex=parsed_scan.sex,
                 birth_date=parsed_scan.birth_date,
-                height_cm=parsed_scan.height_in * IN_TO_CM,
-                weight_kg=parsed_scan.weight_lbs * LBS_TO_KG,
                 total_body_fat_pct=parsed_scan.total_body_fat_pct,
                 total_mass_kg=parsed_scan.total_mass_lbs * LBS_TO_KG,
                 fat_mass_kg=parsed_scan.fat_tissue_lbs * LBS_TO_KG,

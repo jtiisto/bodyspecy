@@ -17,8 +17,6 @@ class Scan(Base):
     client_name = Column(String)
     sex = Column(String)
     birth_date = Column(Date)
-    height_cm = Column(Float)
-    weight_kg = Column(Float)
     total_body_fat_pct = Column(Float)
     total_mass_kg = Column(Float)
     fat_mass_kg = Column(Float)

@@ -110,11 +110,11 @@ For each matched scan, compare VAT:
 - Local DB: `scans` row `vat_mass_kg`, `vat_volume_cm3`
 - Tolerances: 0.01 kg mass, 0.5 cm3 volume.
 
-##### 6. `test_scan_info` (parametrized over each matched scan)
-Compare patient intake data from API scan-info with local DB:
-- API: `GET .../dexa/scan-info` → `patient_intake` (likely has height, weight)
-- Local DB: `scans` row `height_cm`, `weight_kg`
-- Tolerances: 0.5 cm height, 0.5 kg weight (intake vs DEXA-measured may differ).
+_Intake demographics (height, weight) from the API's `scan-info` endpoint are
+intentionally not mirrored locally. BodySpec carries both forward unchanged from
+the original intake questionnaire, so neither is a DEXA scan result; the project
+only stores values actually measured by the scanner. Use `total_mass_kg` from
+the DEXA summary for weight comparisons._
 
 ---
 

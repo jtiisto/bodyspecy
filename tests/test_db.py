@@ -7,7 +7,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from bodyspecy.localdb.db import BodyspecDB, LBS_TO_KG, IN_TO_CM, IN3_TO_CM3
+from bodyspecy.localdb.db import BodyspecDB, LBS_TO_KG, IN3_TO_CM3
 from bodyspecy.localdb.models import Base, Scan, ScanRegion, ScanBoneDensity
 
 
@@ -107,22 +107,13 @@ class TestUnitConversions:
 
         with db.get_session() as session:
             scan = session.query(Scan).one()
-            # weight_lbs=205.0, total_mass_lbs=193.2
-            assert scan.weight_kg == pytest.approx(205.0 * LBS_TO_KG, rel=1e-4)
+            # total_mass_lbs=193.2
             assert scan.total_mass_kg == pytest.approx(193.2 * LBS_TO_KG, rel=1e-4)
             assert scan.fat_mass_kg == pytest.approx(59.7 * LBS_TO_KG, rel=1e-4)
             assert scan.lean_mass_kg == pytest.approx(126.6 * LBS_TO_KG, rel=1e-4)
             assert scan.bone_mineral_content_kg == pytest.approx(
                 7.0 * LBS_TO_KG, rel=1e-4
             )
-
-    def test_height_conversion(self, db, sample_parsed_scan):
-        db.import_scan(sample_parsed_scan)
-
-        with db.get_session() as session:
-            scan = session.query(Scan).one()
-            # height_in=71.0
-            assert scan.height_cm == pytest.approx(71.0 * IN_TO_CM, rel=1e-4)
 
     def test_vat_volume_conversion(self, db, sample_parsed_scan):
         db.import_scan(sample_parsed_scan)
