@@ -20,6 +20,38 @@ except ImportError:
 
 from .config import MCPConfig
 
+# Server instructions: sent in the initialize handshake and loaded by the
+# client at session start, before any tool description. Rules that hold for
+# every tool live here; the guard test holds them under the client's
+# 4,096-char cut.
+INSTRUCTIONS = """\
+BodySpec DEXA scan data: one row per scan in scans (body fat %, total, fat
+and lean mass, bone mineral content, resting metabolic rate, android/gynoid
+fat and A/G ratio, visceral fat, total BMD with T/Z scores), body composition
+per region in scan_regions, bone mineral density per bone region in
+scan_bone_density. Use these tools for body composition history, regional and
+left/right comparison, bone health and trends across scans. Read-only.
+
+- Start with get_scan_summary; get_body_composition_trends for the time
+  series, get_regional_comparison for regions, get_bone_density_summary for
+  bone health; execute_sql_query (SELECT/WITH only, one statement, rows
+  capped) for anything else.
+- Unsure of a column or a region value: get_table_details(table_name) shows
+  the columns and sample rows; do NOT guess. A wrong region returns 0 rows,
+  not an error.
+- Exact values: region strings are lower-case snake_case. scan_regions has
+  arms, legs, trunk, android, gynoid, total, right_arm, left_arm, right_leg,
+  left_leg; scan_bone_density has head, arms, legs, trunk, ribs, spine,
+  pelvis, total. t_score and z_score are set only where region = 'total'.
+  Dates are YYYY-MM-DD; scan_date joins the three tables.
+- Units are metric as stored: kg, cm³ (VAT volume), g/cm² (BMD), kcal/day
+  (RMR), converted at import from the report's lb and in³. Percentages are
+  plain numbers (25.0 = 25.0 %). Report values as stored; do not convert.
+- WHO T-score: >= -1.0 normal, -2.5 to -1.0 osteopenia, <= -2.5
+  osteoporosis. A/G ratio below 1.0 is the healthier distribution.
+- Full guide: resource file://bodyspec_data_guide.
+"""
+
 
 class SQLiteConnection:
     """Secure SQLite connection context manager for read-only access."""
@@ -166,18 +198,17 @@ def create_mcp_server(config: MCPConfig) -> FastMCP:
 
     db_manager = DatabaseManager(config)
 
-    mcp = FastMCP("BodySpec DEXA Data Explorer")
+    mcp = FastMCP("BodySpec DEXA Data Explorer", instructions=INSTRUCTIONS)
 
     @mcp.tool()
     def explore_database_structure() -> Dict[str, Any]:
         """WHEN TO USE: When you need to understand what DEXA scan data is available.
 
-        This is your starting point for exploring BodySpec DEXA data. Use this tool
-        first to see what tables are available, how many scans exist, and the date
-        range of data before running specific queries or using other tools.
+        Starting point for BodySpec DEXA data: call first to see the tables, how many
+        scans exist and the date range, before running specific queries or other tools.
 
-        Returns:
-            Database structure with tables, row counts, and date ranges
+        Result: the tables with row count and description each, plus the scan date
+        range of the tables that carry scan_date.
         """
         try:
             tables_query = """
@@ -221,15 +252,15 @@ def create_mcp_server(config: MCPConfig) -> FastMCP:
     def get_table_details(table_name: str) -> Dict[str, Any]:
         """WHEN TO USE: When you need to see the structure and sample data of a specific table.
 
-        Use this after 'explore_database_structure' when you want to understand what
-        columns are available in a table and see examples of the actual data. Useful
-        for crafting custom SQL queries.
+        Use after explore_database_structure to see a table's columns and examples of
+        the actual data; useful before writing SQL. The sample rows show the exact
+        region strings to filter on.
+
+        Result: the table's columns (name, type, required, primary key), up to three
+        sample rows and a description.
 
         Args:
             table_name: Name of the table (scans, scan_regions, or scan_bone_density)
-
-        Returns:
-            Table structure with columns, data types, and sample records
         """
         if not table_name or not table_name.strip():
             raise ValueError("Table name cannot be empty")
@@ -289,29 +320,26 @@ def create_mcp_server(config: MCPConfig) -> FastMCP:
     ) -> List[Dict[str, Any]]:
         """WHEN TO USE: When you need to run custom SQL queries against the DEXA scan database.
 
-        This is the main tool for custom data analysis. Use it to run SELECT queries
-        to analyze body composition, bone density, trends, or find patterns across scans.
+        The main tool for custom analysis: SELECT queries over body composition, bone
+        density, trends and patterns across scans.
+        ONLY SELECT and WITH queries are allowed, for security; one statement, rows
+        capped at the server's limit (default 1000).
+        All values are metric: kg, cm³, g/cm²; percentages are plain numbers.
+        Column names and region values are non-obvious: call
+        get_table_details(table_name) to confirm columns and enumerate region values
+        before filtering; do NOT guess. A wrong region returns 0 rows, not an error.
 
-        IMPORTANT: Only SELECT and WITH queries are allowed for security. All data is
-        stored in metric units (kg, cm, g/cm2).
+        Sample queries:
+        - All scans overview: SELECT scan_date, total_body_fat_pct, total_mass_kg, lean_mass_kg FROM scans ORDER BY scan_date
+        - Fat distribution: SELECT scan_date, region, fat_pct FROM scan_regions WHERE region IN ('arms', 'legs', 'trunk') ORDER BY scan_date, region
+        - Bone density: SELECT scan_date, region, bmd_g_cm2 FROM scan_bone_density ORDER BY scan_date, region
+        - Left vs right: SELECT scan_date, region, lean_mass_kg FROM scan_regions WHERE region IN ('right_arm', 'left_arm', 'right_leg', 'left_leg') ORDER BY scan_date, region
 
-        Column names and `region` values are non-obvious — call
-        get_table_details(table_name) to confirm columns and enumerate region
-        values before filtering; do NOT guess. A wrong region returns 0 rows,
-        not an error.
+        Result: list of matching records as dicts.
 
         Args:
             query: SQL SELECT query to execute
             params: Optional list of parameters for ? placeholders in query
-
-        Example queries:
-        - All scans overview: "SELECT scan_date, total_body_fat_pct, total_mass_kg, lean_mass_kg FROM scans ORDER BY scan_date"
-        - Fat distribution: "SELECT scan_date, region, fat_pct FROM scan_regions WHERE region IN ('arms', 'legs', 'trunk') ORDER BY scan_date, region"
-        - Bone density: "SELECT scan_date, region, bmd_g_cm2 FROM scan_bone_density ORDER BY scan_date, region"
-        - Left vs right: "SELECT scan_date, region, lean_mass_kg FROM scan_regions WHERE region LIKE '%arm%' OR region LIKE '%leg%' ORDER BY scan_date"
-
-        Returns:
-            List of matching records as dictionaries
         """
         if not query or not query.strip():
             raise ValueError("Query cannot be empty")
@@ -325,12 +353,14 @@ def create_mcp_server(config: MCPConfig) -> FastMCP:
     def get_scan_summary() -> Dict[str, Any]:
         """WHEN TO USE: When you want a quick overview of all DEXA scan data without writing SQL.
 
-        This is the best starting tool for understanding someone's body composition
-        history. Provides total scan count, date range, latest scan metrics, and
-        change from first to latest scan.
+        The best starting tool for someone's body composition history: total scan
+        count, date range, the latest scan's metrics and the change from first to
+        latest scan.
 
-        Returns:
-            Summary with total scans, date range, latest metrics, and trends
+        Result: total_scans, date_range (first, latest), latest_scan (body fat %,
+        masses, RMR, android/gynoid fat and A/G ratio, VAT, total BMD with T/Z scores)
+        and, with more than one scan, trend_first_to_latest (changes in body fat %,
+        total, fat and lean mass, and BMD).
         """
         try:
             # Basic scan info
@@ -409,13 +439,12 @@ def create_mcp_server(config: MCPConfig) -> FastMCP:
     def get_body_composition_trends() -> Dict[str, Any]:
         """WHEN TO USE: When you need time-series body composition data across all scans.
 
-        Returns every scan's key metrics as a time series, ideal for charting progress
-        or analyzing trends in body fat, lean mass, weight, metabolic rate, and visceral
-        fat over time.
+        Every scan's key metrics as a time series, for charting progress or analysing
+        trends in body fat, lean mass, total mass, metabolic rate and visceral fat.
 
-        Returns:
-            Time-series data with scan_date, body_fat_pct, fat_mass_kg, lean_mass_kg,
-            total_mass_kg, rmr_kcal, ag_ratio, vat_mass_kg for each scan
+        Result: scan_count, scans (one row per scan, oldest first: scan_date,
+        body_fat_pct, fat_mass_kg, lean_mass_kg, total_mass_kg, rmr_kcal, ag_ratio,
+        vat_mass_kg) and a units map.
         """
         try:
             query = """
@@ -455,19 +484,21 @@ def create_mcp_server(config: MCPConfig) -> FastMCP:
         """WHEN TO USE: When you need body composition broken down by body region.
 
         Two modes:
-        - No region specified: Returns the latest scan's breakdown across ALL regions
-          (arms, legs, trunk, android, gynoid, total, plus left/right limbs).
-        - Region specified: Returns that region's trends across ALL scans over time.
+        - No region: the latest scan's breakdown across ALL regions (arms, legs,
+          trunk, android, gynoid, total, plus left/right limbs).
+        - Region given: that region's trends across ALL scans over time.
 
         Valid regions: arms, legs, trunk, android, gynoid, total, right_arm, left_arm,
-        right_leg, left_leg.
+        right_leg, left_leg. Any other value is an error.
+
+        Result: regional body composition (fat_pct, total_mass_kg, fat_mass_kg,
+        lean_mass_kg, bone_mineral_content_kg). Without a region: scan_date and
+        regions, one row per region. With a region: scan_count and trends, one row
+        per scan, oldest first.
 
         Args:
             region: Optional specific region to get trends for. If None, returns
                     latest scan's all-region breakdown.
-
-        Returns:
-            Regional body composition data (fat%, mass, lean mass by region)
         """
         try:
             if region:
@@ -528,16 +559,19 @@ def create_mcp_server(config: MCPConfig) -> FastMCP:
     def get_bone_density_summary() -> Dict[str, Any]:
         """WHEN TO USE: When you need bone mineral density (BMD) data and interpretation.
 
-        Returns BMD by anatomical region across all scans, plus T-score and Z-score
-        interpretation using WHO thresholds. Useful for tracking bone health over time.
+        BMD by anatomical region (head, arms, legs, trunk, ribs, spine, pelvis, total)
+        across all scans, plus T-score and Z-score interpretation of the latest scan
+        using WHO thresholds. Useful for tracking bone health over time.
 
         WHO T-score interpretation:
         - >= -1.0: Normal bone density
         - -2.5 to -1.0: Osteopenia (low bone mass)
         - <= -2.5: Osteoporosis
 
-        Returns:
-            BMD by region across scans, T/Z scores, and WHO classification
+        Result: scans_by_date (per scan date, rows of region, bmd_g_cm2, t_score,
+        z_score; T/Z scores only on region total), total_bmd_trend (region total over
+        time), latest_interpretation (t_score, z_score, WHO classification, detail,
+        reference) and a units map.
         """
         try:
             # All bone density data across scans

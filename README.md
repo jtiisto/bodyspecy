@@ -73,9 +73,11 @@ Add to your MCP settings:
 | `get_bone_density_summary` | BMD by anatomical region with T/Z-score interpretation (WHO thresholds) |
 | `execute_sql_query` | Run custom read-only SQL queries against the database |
 
+The server is built on [FastMCP](https://gofastmcp.com) 4.x. FastMCP builds a tool's client-visible description from the docstring text above its first structured section and turns each `Args:` entry into that parameter's schema description; any other section (`Returns:`, `Example queries:`, `Note:`) is cut and the model never sees it. So every tool docstring here keeps everything it has to say above `Args:` (terse lines, flush-left `- ` bullets, a `Result:` line, `Sample queries:` bullets), ends with `Args:` and has no other section. Every description leads with `WHEN TO USE:` and fits 2,048 characters; the server also sends `instructions` of at most 4,096 characters carrying the rules that hold for every tool, since Claude Code loads only tool names and the server instructions at session start and cuts at those lengths. `tests/test_mcp_tool_descriptions.py` fails if any docstring or parameter text is hidden from the client or either limit is exceeded.
+
 ## Database schema
 
-All values are stored in metric units (kg, cm, g/cm²).
+All values are stored in metric units (kg, cm³, g/cm²); percentages are plain numbers.
 
 - **scans** — one row per DEXA scan (body fat %, mass, lean mass, BMC, RMR, android/gynoid fat, VAT, bone density summary)
 - **scan_regions** — body composition by region (arms, legs, trunk, android, gynoid, total, right/left arm, right/left leg)
@@ -88,7 +90,7 @@ BodySpec does have a public API, but it does not include all the data available 
 ## Development
 
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[mcp,dev]"
 pytest
 ```
 
