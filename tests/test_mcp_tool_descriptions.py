@@ -44,7 +44,7 @@ import pytest
 from bodyspecy.localdb.db import BodyspecDB
 from bodyspecy.mcp.config import MCPConfig
 from bodyspecy.mcp.server import create_mcp_server
-from tests.mcp_tools import list_tools, server_instructions
+from tests.mcp_tools import list_resource_uris, list_tools, server_instructions
 
 EXPECTED_TOOLS = [
     "explore_database_structure",
@@ -67,6 +67,7 @@ MAX_DESCRIPTION_CHARS = 2048
 # line never trips them.
 ANTI_GUESSING_MARKERS = ["get_table_details", "do NOT guess", "0 rows"]
 
+_FILE_URI = re.compile(r"file://[^\s]*?(?=[.,;:]?(?:\s|$))")
 _ARGS_HEADING = re.compile(r"^Args:$", re.MULTILINE)
 _ARGS_ENTRY = re.compile(r"^(\w+)(\s*\([^)]*\))?:(.*)$")
 
@@ -226,3 +227,16 @@ class TestServerInstructions:
         text = _normalise(instructions or "")
         missing = [m for m in ANTI_GUESSING_MARKERS if m not in text]
         assert not missing, f"the instructions lost the anti-guessing hint {missing}"
+
+    def test_instructions_name_resources_as_the_wire_lists_them(
+            self, mcp_server, instructions):
+        """Every file:// URI in the instructions is in the resource listing
+        verbatim. FastMCP normalises file://x to file://x/, and Claude Code's
+        resource reader rejects a file:// URI without the trailing slash, so a
+        pointer written without it sends the model to a URI it cannot read."""
+        named = _FILE_URI.findall(instructions or "")
+        assert named, "the instructions point at no file:// resource"
+        listed = list_resource_uris(mcp_server)
+        missing = [uri for uri in named if uri not in listed]
+        assert not missing, (
+            f"the instructions name {missing}, the server lists {listed}")

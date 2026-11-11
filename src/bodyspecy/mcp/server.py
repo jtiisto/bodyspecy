@@ -49,7 +49,7 @@ left/right comparison, bone health and trends across scans. Read-only.
   plain numbers (25.0 = 25.0 %). Report values as stored; do not convert.
 - WHO T-score: >= -1.0 normal, -2.5 to -1.0 osteopenia, <= -2.5
   osteoporosis. A/G ratio below 1.0 is the healthier distribution.
-- Full guide: resource file://bodyspec_data_guide.
+- Full guide: resource file://bodyspec_data_guide/.
 """
 
 
