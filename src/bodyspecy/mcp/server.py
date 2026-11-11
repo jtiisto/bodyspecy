@@ -725,7 +725,6 @@ def _get_data_guide() -> str:
 
 ## Units — ALL METRIC
 - Mass/weight: kilograms (kg)
-- Height: centimeters (cm)
 - Volume: cubic centimeters (cm³)
 - Bone density: grams per square centimeter (g/cm²)
 - Percentages: stored as plain numbers (30.9 = 30.9%)
